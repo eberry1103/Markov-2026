@@ -1,0 +1,207 @@
+---
+title: "HW_5(Markov)"
+author: "Emery Berry"
+format: html
+editor: visual
+---
+
+## Question 2
+
+#### Part b) Find stationary distribution numerically
+
+```{r}
+a <- 0.04; b <- 0.16; K <- 0.1
+states <- 1:5
+n <- 5
+
+# Build transition matrix
+P <- matrix(0, n, n)
+for (i in 1:n) {
+  p_fwd <- K * exp(a * i)
+  q_bwd <- K * exp(b * (i - 1))
+  if (i < n) P[i, i+1] <- p_fwd
+  if (i > 1) P[i, i-1] <- q_bwd
+  P[i, i] <- 1 - sum(P[i,])
+}
+
+eig <- eigen(t(P))
+idx <- which.min(abs(eig$values - 1))
+pi_b <- Re(eig$vectors[, idx])
+pi_b <- pi_b / sum(pi_b)
+print(pi_b)
+```
+
+#### Part c) Simulate Markov Chain
+
+```{r}
+set.seed(42)
+n_steps <- 1e6
+chain <- integer(n_steps + 1)
+chain[1] <- 1
+
+for (t in 1:n_steps) {
+  chain[t+1] <- sample(states, 1, prob = P[chain[t], ])
+}
+
+pi_sim <- tabulate(chain[-1], nbins = n) / n_steps
+
+# Plot histogram of fraction of time spent in each state
+barplot(pi_sim,
+        names.arg = states,
+        col = "pink",
+        xlab = "State",
+        ylab = "Fraction of time",
+        main = "Fraction of time spent in each state (10^6 steps)")
+```
+
+#### Part d) Plot Histogram
+
+```{r}
+# Analytical from part (a)
+pi_a <- exp((a - b) * states * (states - 1) / 2)
+pi_a <- pi_a / sum(pi_a)
+
+# Plot
+barplot(
+  rbind(pi_sim, pi_a, pi_b),
+  beside = TRUE,
+  names.arg = states,
+  col = c("pink", "skyblue", "darkgreen"),
+  xlab = "State", ylab = "Probability",
+  main = "Stationary Distribution — Three Methods",
+  legend.text = c("(c) Simulation", "(a) Analytical", "(b) Eigenvector"),
+  args.legend = list(bty = "n")
+)
+```
+
+-   Histograms Look to be overall matching!
+
+# Question 3
+
+#### Part b) Eigenvectors and Eigenvalues
+
+```{r}
+make_P <- function(a) {
+  matrix(c(1-a,  a,   0,
+             a,  0, 1-a,
+             0, 1-a,  a),
+         nrow = 3, byrow = TRUE)
+}
+
+# Leave a as a symbol — show the structure for a general a
+# then compute numerically for a specific value
+a_val <- 0.5  # or any valid 0 < a < 1
+A <- t(make_P(a_val))
+
+eig <- eigen(A)
+cat("Eigenvalues:\n");  print(round(Re(eig$values), 6))
+cat("Eigenvectors:\n"); print(round(Re(eig$vectors), 6))
+```
+
+#### Part c)
+
+```{r}
+a_val <- 0.99
+P <- make_P(a_val)
+A <- t(P)
+
+# Get eigenvectors and eigenvalues
+eig <- eigen(A)
+lambdas <- Re(eig$values)
+V <- Re(eig$vectors)  
+
+cat("Eigenvalues:\n"); print(round(lambdas, 8))
+cat("\nEigenvectors (columns):\n"); print(round(V, 6))
+
+# X_0 = 1 means we start certainly in state 1
+# so q_0 = (1, 0, 0) — all probability mass on state 1
+q0 <- c(1, 0, 0)
+
+# Find coefficients c such that V %*% c = q0
+# i.e. express q0 in the eigenvector basis
+coeffs <- solve(V, q0)
+cat("\nCoefficients (c_1, c_2, c_3):\n"); print(round(coeffs, 8))
+
+# q_n = c_1*lambda_1^n*v_1 + c_2*lambda_2^n*v_2 + c_3*lambda_3^n*v_3
+# The lambda=1 term is the stationary distribution pi.
+q_n <- function(n) {
+  result <- rep(0, 3)
+  for (k in 1:3) {
+    result <- result + coeffs[k] * lambdas[k]^n * V[, k]
+  }
+  result
+}
+
+# Show q_n(1) converging to pi(1) = 1/3
+cat("\nq_n(1) converging to pi(1) = 1/3:\n")
+for (n in c(0, 1, 2, 5, 10, 25, 50, 100)) {
+  cat(sprintf("  n = %3d:  q_n(1) = %.8f  |error| = %.2e\n",
+              n, q_n(n)[1], abs(q_n(n)[1] - 1/3)))
+}
+```
+
+Since $|\lambda_2|, |\lambda_3| < 1$ , the terms $c_2\lambda_2^n v_2$ and $c_3\lambda_3^n v_3$ decay to zero exponentially as $n \to \infty$, leaving only $c_1\lambda_1^n v_1 = c_1 v_1 = \pi$. Thus $q_n$ converges exponentially to the stationary distribution $\pi$, with convergence rate governed by $|\lambda_2|$: $q_n = c_1\lambda_1^n v_1 + c_2\lambda_2^n v_2 + c_3\lambda_3^n v_3 \xrightarrow{n \to \infty} \pi$
+
+#### Part d)
+
+```{r}
+# Compute |lambda_2| across all valid values of a
+a_seq <- seq(0.01, 0.99, length.out = 500)
+
+lambda2 <- sapply(a_seq, function(a) {
+  eigs <- abs(Re(eigen(t(make_P(a)))$values))
+  sort(eigs, decreasing = TRUE)[2]  # second largest
+})
+
+opt_a <- a_seq[which.min(lambda2)]
+cat(sprintf("Fastest convergence at a = %.4f\n", opt_a))
+cat(sprintf("Minimum |lambda_2|      = %.6f\n", min(lambda2)))
+```
+
+#### Part e)
+
+```{r}
+eig <- eigen(A)
+lambdas <- Re(eig$values)
+V <- Re(eig$vectors)
+coeffs <- solve(V, c(1, 0, 0))
+
+q_n <- function(n) {
+  result <- rep(0, 3)
+  for (k in 1:3) {
+    result <- result + coeffs[k] * lambdas[k]^n * V[, k]
+  }
+  result
+}
+
+# Theoretical q_n(1) for n = 0 to 300
+n_max <- 300
+theory <- sapply(0:n_max, function(n) q_n(n)[1])
+
+# Simulate N chains, all starting at state 1
+run_sim <- function(N_chains) {
+  chains <- matrix(1L, nrow = N_chains, ncol = n_max + 1)
+  for (t in 1:n_max) {
+    chains[, t+1] <- sapply(chains[, t], function(s) sample(1:3, 1, prob = P[s, ]))
+  }
+  # fraction of chains in state 1 at each time n
+  colMeans(chains == 1)
+}
+
+# Plot for N = 100, 1000, 10000
+par(mfrow = c(1, 3))
+for (N in c(100, 1000, 10000)) {
+  set.seed(42)
+  fn <- run_sim(N)
+  plot(0:n_max, fn, type = "l", col = "skyblue", lwd = 1,
+       xlab = "n", ylab = expression(f[n]),
+       main = sprintf("N = %d chains", N),
+       ylim = c(0, 1))
+  lines(0:n_max, theory, col = "pink", lwd = 2, lty = 2)
+  legend("topright",
+         legend = c(expression(f[n]*" (simulation)"), expression(q[n](1)*" (theory)")),
+         col = c("skyblue", "pink"),
+         lty = c(1, 2), bty = "n")
+}
+par(mfrow = c(1, 1))
+```
