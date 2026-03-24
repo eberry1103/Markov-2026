@@ -1,0 +1,83 @@
+---
+title: "HW_6(Markov)"
+author: "Emery Berry"
+format: pdf
+editor: visual
+---
+
+#### Question 1 part d)
+
+```{r}
+# Transition matrix p from part (a)
+
+# Define transition matrix (rows = from, cols = to, states 0,1,2,3,4)
+p <- matrix(c(
+  0,   1,   0,   0,   0,
+  1/3, 0,   2/3, 0,   0,
+  0,   1/2, 0,   1/2, 0,
+  0,   0,   2/3, 0,   1/3,
+  0,   0,   0,   1,   0
+), nrow = 5, byrow = TRUE)
+
+# Compute p^50 using matrix exponentiation
+library(expm)
+p50 <- p %^% 50
+
+# Starting at X0 = 2 (index 3 since R is 1-indexed)
+q0 <- c(0, 0, 1, 0, 0)
+q50 <- q0 %*% p50
+
+# Stationary distribution from part (b)
+pi_stat <- c(1/12, 3/12, 4/12, 3/12, 1/12)
+
+# Print results
+cat("q50:\n")
+cat(round(q50, 6), "\n\n")
+cat("Stationary distribution pi:\n")
+cat(round(pi_stat, 6), "\n\n")
+
+# Plot both
+states <- 0:4
+plot(states, pi_stat, type = "b", col = "green", pch = 16, lwd = 2,
+     ylim = c(0, 1), xlab = "state i", ylab = "probability",
+     main = "q50(i) vs stationary distribution pi(i)")
+lines(states, q50[1,], type = "b", col = "blue", pch = 17, lwd = 2)
+legend("topright",
+       legend = c("pi(i) stationary", "q50(i)"),
+       col = c("green", "blue"), pch = c(16, 17), lwd = 2)
+```
+
+#### Question 3 Part c)
+
+```{r}
+# Solve ln(x) = 2x - 2
+f <- function(x) log(x) - 2*x + 2
+root <- uniroot(f, interval = c(0.001, 0.999))
+cat("p =", round(root$root, 6), "\n")
+```
+
+#### Question 4 part b)
+
+```{r}
+a <- 0.49
+n_sim <- 1000
+max_gen <- 200
+
+extinct <- 0
+
+for (i in 1:n_sim) {
+  X <- 1
+  for (gen in 1:max_gen) {
+    if (X == 0) break
+    Z <- rbinom(1, size = X, prob = 1 - a)
+    X <- 2 * Z
+  }
+  if (X == 0) extinct <- extinct + 1
+}
+
+sim_rho <- extinct / n_sim
+theoretical_rho <- a / (1 - a)
+
+cat("Simulated extinction probability: ", round(sim_rho, 4), "\n")
+cat("Theoretical rho = a/(1-a):        ", round(theoretical_rho, 4), "\n")
+```
