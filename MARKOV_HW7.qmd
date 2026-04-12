@@ -7,7 +7,7 @@ editor: visual
 #### Problem 1 b)
 
 ```{r}
-lambda_A <- 2      # goals per game
+lambda_A <- 2      
 lambda_B <- 1.5
 
 #P(tie | no goals up to t)
@@ -86,11 +86,10 @@ legend("topleft",
 #### Problem 2 part c)
 
 ```{r}
-# ── Parameters ────────────────────────────────────────────────────────────────
 lambda <- 3
 T_game <- 48
 
-# ── Simulate arrivals ─────────────────────────────────────────────────────────
+#Simulate arrivals
 sim_poisson_arrivals <- function(lambda, T_max) {
   arrivals <- c()
   t <- 0
@@ -106,7 +105,7 @@ set.seed(42)
 times_A <- sim_poisson_arrivals(lambda, T_game)
 times_B <- sim_poisson_arrivals(lambda, T_game)
 
-# ── Plot ──────────────────────────────────────────────────────────────────────
+#Plot
 par(mfrow = c(2,1), mar = c(2, 4, 3, 2))
 
 # Top: Team A
@@ -133,11 +132,11 @@ par(mfrow = c(1,1), mar = c(5, 4, 4, 2))
 #### Part d)
 
 ```{r}
-# ── Parameters ────────────────────────────────────────────────────────────────
+# Parameters
 lambda <- 3
 T_game <- 48
 
-# ── Simulate merged process ───────────────────────────────────────────────────
+# Simulate merged process
 set.seed(42)
 times_merged <- sim_poisson_arrivals(2 * lambda, T_game)
 
@@ -151,7 +150,7 @@ cat("  Total baskets:", length(times_merged), "\n")
 cat("  Team A baskets:", length(times_A_d), "\n")
 cat("  Team B baskets:", length(times_B_d), "\n")
 
-# ── Plot (first 10 min for readability, same as part c) ───────────────────────
+# Plot
 par(mfrow = c(2,1), mar = c(2, 4, 3, 2))
 
 # Top: Team A
@@ -178,38 +177,38 @@ par(mfrow = c(1,1), mar = c(5, 4, 4, 2))
 #### Part e)
 
 ```{r}
-# ── Parameters ────────────────────────────────────────────────────────────────
+# Parameters
 lambda <- 3
 t      <- 48
 n_sim  <- 1e5
 
-# ── Simulate 10^5 games ───────────────────────────────────────────────────────
+# Simulate 10^5 games
 set.seed(42)
 N   <- rpois(n_sim, lambda = 2 * lambda * t)      # total baskets both teams
 N_A <- rbinom(n_sim, size = N, prob = 0.5)        # A's share
 N_B <- N - N_A                                     # B's share
 D   <- 2 * (N_A - N_B)                            # score difference
 
-# ── Empirical estimates ───────────────────────────────────────────────────────
+# Empirical estimates
 emp_mean <- mean(D)
 emp_var  <- var(D)
 emp_tie  <- mean(D == 0)
 
-# ── Theoretical values ────────────────────────────────────────────────────────
+# Theoretical values
 theo_mean <- 0
 theo_var  <- 8 * lambda * t
 theo_tie  <- exp(-2 * lambda * t) * sum(
                (lambda * t)^(2 * 0:500) / (factorial(0:500))^2
              )
 
-# ── Print comparison ──────────────────────────────────────────────────────────
+# Print comparison
 cat("Part (e): t = 48, lambda = 3, n_sim = 1e5\n\n")
 cat(sprintf("           Empirical    Theoretical\n"))
 cat(sprintf("E[D(t)]:   %8.4f     %8.4f\n", emp_mean, theo_mean))
 cat(sprintf("Var[D(t)]: %8.4f     %8.4f\n", emp_var,  theo_var))
 cat(sprintf("P(D=0):    %8.4f     %8.4f\n", emp_tie,  theo_tie))
 
-# ── Plot histogram of D ───────────────────────────────────────────────────────
+# Plot histogram of D
 par(mar = c(5, 4, 4, 2))
 hist(D,
      breaks = 80,
@@ -245,19 +244,19 @@ print(result)
 #### Problem 3 Part c)
 
 ```{r}
-# ── Parameters ────────────────────────────────────────────────────────────────
+# Parameters
 lambda <- function(t) 0.5 * (1 + (t/30)^2)   # rate function
 T_max  <- 120                                  # days
 lambda_max <- lambda(T_max)                    # = 8.5, max occurs at t=120
 
 cat("lambda_MAX =", lambda_max, "\n")
 
-# ── Step 1: Sample from HPPP(lambda_max) ──────────────────────────────────────
+# Step 1: Sample from HPPP
 set.seed(42)
 candidate_times <- sim_poisson_arrivals(lambda_max, T_max)
 cat("Candidate arrivals (before thinning):", length(candidate_times), "\n")
 
-# ── Step 2: Accept each time T_i with prob lambda(T_i) / lambda_max ───────────
+# Step 2: Accept each time T_i with prob lambda(T_i) / lambda_max
 u               <- runif(length(candidate_times))
 keep            <- u < lambda(candidate_times) / lambda_max
 accepted_times  <- candidate_times[keep]
@@ -265,7 +264,7 @@ accepted_times  <- candidate_times[keep]
 cat("Accepted arrivals (after thinning):  ", length(accepted_times), "\n")
 cat("Expected total reports (theory):      ", 380, "\n")
 
-# ── Plot histogram ────────────────────────────────────────────────────────────
+# Plot histogram
 par(mar = c(5, 4, 4, 2))
 hist(accepted_times,
      breaks = 30,
@@ -290,7 +289,7 @@ legend("topleft",
        lwd    = c(NA, 2),
        bty    = "n")
 
-# ── Print comparison ──────────────────────────────────────────────────────────
+# Print comparison
 cat(sprintf("\nComparison:\n"))
 cat(sprintf("  Simulated total reports: %d\n",   length(accepted_times)))
 cat(sprintf("  Theoretical E[N(120)]:   %d\n",   380))
