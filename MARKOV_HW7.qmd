@@ -1,0 +1,298 @@
+---
+title: "Markov_HW7"
+format: pdf
+editor: visual
+---
+
+#### Problem 1 b)
+
+```{r}
+lambda_A <- 2      # goals per game
+lambda_B <- 1.5
+
+#P(tie | no goals up to t)
+tie_prob_b <- function(t) {
+  lA <- lambda_A * (90 - t) / 90
+  lB <- lambda_B * (90 - t) / 90
+  # sum over k (truncate at 50, negligible error beyond)
+  k  <- 0:50
+  sum(exp(-(lA + lB)) * (lA * lB)^k / (factorial(k))^2)
+}
+
+t_b <- seq(0, 90, by = 0.5)
+p_b <- sapply(t_b, tie_prob_b)
+
+plot(t_b, p_b,
+     type = "l", lwd = 2, col = "steelblue",
+     xlab = "Time t (minutes)",
+     ylab = "P(tie | no goals up to t)",
+     main = "Part (b): Otis's tie probability given no goals up to t",
+     ylim = c(0, 1))
+abline(h = c(0, 1), lty = 2, col = "gray")
+```
+
+#### Part c)
+
+```{r}
+#t in [0, 60) 
+t_c1 <- seq(0, 60, by = 0.5)
+p_c1 <- sapply(t_c1, tie_prob_b)
+
+#t in [60, 90] — score is 1-0
+tie_prob_c <- function(t) {
+  lA <- lambda_A * (90 - t) / 90
+  lB <- lambda_B * (90 - t) / 90
+  lB * exp(-(lA + lB))
+}
+
+t_c2 <- seq(60, 90, by = 0.5)
+p_c2 <- sapply(t_c2, tie_prob_c)
+
+plot(NA,
+     xlim = c(0, 90), ylim = c(0, 0.5),
+     xlab = "Time t (minutes)",
+     ylab = "P(tie)",
+     main = "Part (c): Otis's hopes rise then evaporate (goal by A at t=60)")
+
+# Region 1
+lines(t_c1, p_c1, lwd = 2, col = "steelblue")
+
+# Region 2
+lines(t_c2, p_c2, lwd = 2, col = "tomato")
+
+# Mark the discontinuity at t = 60
+points(60, tie_prob_b(60),  pch = 19, col = "steelblue")   
+points(60, tie_prob_c(60),  pch = 1,  col = "tomato")       
+
+# Mark the peak at t* ≈ 64.3
+t_peak <- 90 - 90/3.5
+p_peak <- tie_prob_c(t_peak)
+points(t_peak, p_peak, pch = 8, col = "tomato", cex = 1.2)
+text(t_peak, p_peak + 0.02,
+     labels = paste0("peak t≈", round(t_peak, 1)),
+     col = "tomato", cex = 0.8)
+
+# Vertical line at t = 60
+abline(v = 60, lty = 2, col = "gray")
+
+legend("topleft",
+       legend = c("Score 0-0 (part b)", "Score 1-0 (part c)", "Peak"),
+       col    = c("steelblue", "tomato", "tomato"),
+       lty    = c(1, 1, NA),
+       pch    = c(NA, NA, 8),
+       lwd    = 2, bty = "n")
+```
+
+#### Problem 2 part c)
+
+```{r}
+# ── Parameters ────────────────────────────────────────────────────────────────
+lambda <- 3
+T_game <- 48
+
+# ── Simulate arrivals ─────────────────────────────────────────────────────────
+sim_poisson_arrivals <- function(lambda, T_max) {
+  arrivals <- c()
+  t <- 0
+  repeat {
+    t <- t + rexp(1, rate = lambda)
+    if (t > T_max) break
+    arrivals <- c(arrivals, t)
+  }
+  arrivals
+}
+
+set.seed(42)
+times_A <- sim_poisson_arrivals(lambda, T_game)
+times_B <- sim_poisson_arrivals(lambda, T_game)
+
+# ── Plot ──────────────────────────────────────────────────────────────────────
+par(mfrow = c(2,1), mar = c(2, 4, 3, 2))
+
+# Top: Team A
+plot(NA, xlim = c(0, T_game), ylim = c(0, 1),
+     yaxt = "n", xaxt = "n",
+     xlab = "", ylab = "",
+     main = expression(paste("Part (c): Basket arrival times  (", lambda, " = 3/min, T = 48 min)")))
+segments(times_A, 0, times_A, 1, col = "tomato", lwd = 1)
+mtext("Team A", side = 2, line = 1, cex = 0.9, col = "tomato")
+
+# Bottom: Team B
+par(mar = c(5, 4, 1, 2))
+plot(NA, xlim = c(0, T_game), ylim = c(0, 1),
+     yaxt = "n",
+     xlab = "Time (minutes)", ylab = "")
+segments(times_B, 0, times_B, 1, col = "steelblue", lwd = 1)
+mtext("Team B", side = 2, line = 1, cex = 0.9, col = "steelblue")
+
+# Reset
+par(mfrow = c(1,1), mar = c(5, 4, 4, 2))
+
+```
+
+#### Part d)
+
+```{r}
+# ── Parameters ────────────────────────────────────────────────────────────────
+lambda <- 3
+T_game <- 48
+
+# ── Simulate merged process ───────────────────────────────────────────────────
+set.seed(42)
+times_merged <- sim_poisson_arrivals(2 * lambda, T_game)
+
+# Assign each arrival to A or B with prob 1/2
+assignments <- sample(c("A", "B"), size = length(times_merged), replace = TRUE)
+times_A_d   <- times_merged[assignments == "A"]
+times_B_d   <- times_merged[assignments == "B"]
+
+cat("Part (d):\n")
+cat("  Total baskets:", length(times_merged), "\n")
+cat("  Team A baskets:", length(times_A_d), "\n")
+cat("  Team B baskets:", length(times_B_d), "\n")
+
+# ── Plot (first 10 min for readability, same as part c) ───────────────────────
+par(mfrow = c(2,1), mar = c(2, 4, 3, 2))
+
+# Top: Team A
+plot(NA, xlim = c(0, 10), ylim = c(0, 1),
+     yaxt = "n", xaxt = "n", xlab = "", ylab = "",
+     main = "Part (d): Merged process, each basket assigned A or B w.p. 1/2 (first 10 min)")
+segments(times_A_d[times_A_d <= 10], 0,
+         times_A_d[times_A_d <= 10], 1,
+         col = "tomato", lwd = 1.2)
+mtext("Team A", side = 2, line = 1, cex = 0.9, col = "tomato")
+
+# Bottom: Team B
+par(mar = c(5, 4, 1, 2))
+plot(NA, xlim = c(0, 10), ylim = c(0, 1),
+     yaxt = "n", xlab = "Time (minutes)", ylab = "")
+segments(times_B_d[times_B_d <= 10], 0,
+         times_B_d[times_B_d <= 10], 1,
+         col = "steelblue", lwd = 1.2)
+mtext("Team B", side = 2, line = 1, cex = 0.9, col = "steelblue")
+
+par(mfrow = c(1,1), mar = c(5, 4, 4, 2))
+```
+
+#### Part e)
+
+```{r}
+# ── Parameters ────────────────────────────────────────────────────────────────
+lambda <- 3
+t      <- 48
+n_sim  <- 1e5
+
+# ── Simulate 10^5 games ───────────────────────────────────────────────────────
+set.seed(42)
+N   <- rpois(n_sim, lambda = 2 * lambda * t)      # total baskets both teams
+N_A <- rbinom(n_sim, size = N, prob = 0.5)        # A's share
+N_B <- N - N_A                                     # B's share
+D   <- 2 * (N_A - N_B)                            # score difference
+
+# ── Empirical estimates ───────────────────────────────────────────────────────
+emp_mean <- mean(D)
+emp_var  <- var(D)
+emp_tie  <- mean(D == 0)
+
+# ── Theoretical values ────────────────────────────────────────────────────────
+theo_mean <- 0
+theo_var  <- 8 * lambda * t
+theo_tie  <- exp(-2 * lambda * t) * sum(
+               (lambda * t)^(2 * 0:500) / (factorial(0:500))^2
+             )
+
+# ── Print comparison ──────────────────────────────────────────────────────────
+cat("Part (e): t = 48, lambda = 3, n_sim = 1e5\n\n")
+cat(sprintf("           Empirical    Theoretical\n"))
+cat(sprintf("E[D(t)]:   %8.4f     %8.4f\n", emp_mean, theo_mean))
+cat(sprintf("Var[D(t)]: %8.4f     %8.4f\n", emp_var,  theo_var))
+cat(sprintf("P(D=0):    %8.4f     %8.4f\n", emp_tie,  theo_tie))
+
+# ── Plot histogram of D ───────────────────────────────────────────────────────
+par(mar = c(5, 4, 4, 2))
+hist(D,
+     breaks = 80,
+     col    = "steelblue",
+     border = "white",
+     freq   = FALSE,
+     main   = expression(paste("Part (e): Distribution of D(48) over ", 10^5, " simulated games")),
+     xlab   = "D(48) = 2(N_A - N_B)  (points)",
+     ylab   = "Density")
+abline(v  = 0,   col = "tomato", lwd = 2, lty = 2)
+abline(v  = emp_mean, col = "black", lwd = 1.5, lty = 3)
+legend("topright",
+       legend = c("D = 0 (tie)", "Empirical mean"),
+       col    = c("tomato", "black"),
+       lty    = c(2, 3),
+       lwd    = 2,
+       bty    = "n")
+```
+
+#### Problem 3 part a) integral
+
+```{r}
+integrand <- function(t) {
+  exp(-t/2 - t^3/5400)
+}
+
+result <- integrate(integrand,
+                    lower = 0,
+                    upper = Inf)
+print(result)
+```
+
+#### Problem 3 Part c)
+
+```{r}
+# ── Parameters ────────────────────────────────────────────────────────────────
+lambda <- function(t) 0.5 * (1 + (t/30)^2)   # rate function
+T_max  <- 120                                  # days
+lambda_max <- lambda(T_max)                    # = 8.5, max occurs at t=120
+
+cat("lambda_MAX =", lambda_max, "\n")
+
+# ── Step 1: Sample from HPPP(lambda_max) ──────────────────────────────────────
+set.seed(42)
+candidate_times <- sim_poisson_arrivals(lambda_max, T_max)
+cat("Candidate arrivals (before thinning):", length(candidate_times), "\n")
+
+# ── Step 2: Accept each time T_i with prob lambda(T_i) / lambda_max ───────────
+u               <- runif(length(candidate_times))
+keep            <- u < lambda(candidate_times) / lambda_max
+accepted_times  <- candidate_times[keep]
+
+cat("Accepted arrivals (after thinning):  ", length(accepted_times), "\n")
+cat("Expected total reports (theory):      ", 380, "\n")
+
+# ── Plot histogram ────────────────────────────────────────────────────────────
+par(mar = c(5, 4, 4, 2))
+hist(accepted_times,
+     breaks = 30,
+     col    = "steelblue",
+     border = "white",
+     main   = "Part (c): Flu report times via acceptance-rejection NHPP",
+     xlab   = "Time t (days from Sept. 1)",
+     ylab   = "Number of reports per bin",
+     freq   = TRUE)
+
+# Overlay the theoretical rate curve scaled to counts
+t_seq <- seq(0, 120, by = 0.5)
+bin_width <- 120 / 30    # = 4 days per bin
+lines(t_seq, lambda(t_seq) * bin_width,
+      col = "tomato", lwd = 2)
+
+legend("topleft",
+       legend = c("Simulated reports", expression(lambda(t) %.% bin_width)),
+       col    = c("steelblue", "tomato"),
+       lty    = c(NA, 1),
+       pch    = c(15, NA),
+       lwd    = c(NA, 2),
+       bty    = "n")
+
+# ── Print comparison ──────────────────────────────────────────────────────────
+cat(sprintf("\nComparison:\n"))
+cat(sprintf("  Simulated total reports: %d\n",   length(accepted_times)))
+cat(sprintf("  Theoretical E[N(120)]:   %d\n",   380))
+cat(sprintf("  Difference:              %d\n",   length(accepted_times) - 380))
+```
