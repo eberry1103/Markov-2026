@@ -1,0 +1,72 @@
+---
+title: "Markov_HW8"
+author: "Emery Berry"
+format: pdf
+editor: visual
+---
+
+### 1. a) Eigenvalues
+
+```{r}
+Q <- matrix(c(
+  -1,  1,  0,  0,
+   0, -1,  1,  0,
+   0,  0, -1,  1,
+   1,  0,  0, -1
+), nrow = 4, byrow = TRUE)
+
+eigen(Q)$values
+```
+
+### 1. e)
+
+```{r}
+set.seed(42)
+
+t_grid <- seq(0, 5, length.out = 500)
+N_vals <- c(100, 1000, 10000, 100000)
+
+par(mfrow = c(2, 2))
+
+for (N in N_vals) {
+  
+  # start at state 1 (prob 1/3) or state 2 (prob 2/3)
+  starts <- sample(c(1, 2), size = N, replace = TRUE, prob = c(1/3, 2/3))
+  
+  # track fraction in state 1 at each time point
+  f_t <- numeric(length(t_grid))
+  
+  for (i in 1:N) {
+    state <- starts[i]
+    time  <- 0
+    for (j in 1:length(t_grid)) {
+      while (time < t_grid[j]) {
+        time  <- time + rexp(1, rate = 1)
+        state <- (state %% 4) + 1
+      }
+      if (state == 1) f_t[j] <- f_t[j] + 1
+    }
+  }
+  
+  plot(t_grid, f_t / N,
+       type = "l", col = "steelblue", lwd = 1.5,
+       xlim = c(0, 5), ylim = c(0, 0.5),
+       xlab = "t", ylab = "f(t)",
+       main = paste("N =", N))
+  
+  abline(h = 0.25, lty = 2, col = "gray")
+}
+```
+
+### 2. c) Eigenvalues and Eigenvectors
+
+```{r}
+Q <- matrix(c(
+  -2,  1,  1,
+   1, -1,  0,
+   1,  0, -1
+), nrow = 3, byrow = TRUE)
+
+eigen(Q)$values
+eigen(Q)$vectors
+```
