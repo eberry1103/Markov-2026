@@ -1,0 +1,74 @@
+---
+title: "Markov_HW9"
+author: "Emery Berry"
+format: pdf
+editor: visual
+---
+
+## Problem 1. d)
+
+```{r}
+set.seed(123)
+
+# Parameters
+alpha <- 1
+beta <- 1
+L <- 20
+N <- 1000
+
+# Function to simulate one delivery time
+simulate_delivery <- function(alpha, beta, L) {
+  i <- 0
+  t <- 0
+  while (i < L) {
+    if (i == 0) {
+      # Reflecting boundary: can only move forward
+      rate <- alpha
+      t <- t + rexp(1, rate)
+      i <- i + 1
+    } else {
+      # Interior: move forward or backward
+      rate <- alpha + beta
+      t <- t + rexp(1, rate)
+      if (runif(1) < alpha / (alpha + beta)) {
+        i <- i + 1
+      } else {
+        i <- i - 1
+      }
+    }
+  }
+  return(t)
+}
+
+# Run N simulations
+times <- replicate(N, simulate_delivery(alpha, beta, L))
+
+# Results
+cat("Simulated mean m0:  ", mean(times), "\n")
+cat("Theoretical m0:     ", L*(L+1)/(2*alpha), "\n")
+cat("Simulated variance: ", var(times), "\n")
+```
+
+# Problem 4 Plot
+
+```{r}
+# Parameters
+beta <- 1
+m_vals <- 1:50
+
+# Stochastic: E[tau_m] = H_{m-1} / beta
+H <- cumsum(1/(1:(max(m_vals)-1)))
+stochastic <- c(0, H) / beta
+
+# Deterministic: log(m) / beta
+deterministic <- log(m_vals) / beta
+
+# Plot
+plot(m_vals, stochastic, type = "l", col = "blue", lwd = 2,
+     xlab = "m (number of particles)",
+     ylab = "Time",
+     main = "Yule Process: Stochastic vs Deterministic arrival time")
+lines(m_vals, deterministic, col = "red", lwd = 2, lty = 2)
+legend("bottomright", legend = c("Stochastic: H_{m-1}/beta", "Deterministic: log(m)/beta"),
+       col = c("blue", "red"), lwd = 2, lty = c(1, 2))
+```
